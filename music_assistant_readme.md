@@ -1,0 +1,188 @@
+# Music Assistant Proxmox VE Helper Script
+
+A Proxmox VE helper script for installing Music Assistant in an LXC container. This script follows the style and conventions of the popular [tteck/Proxmox](https://github.com/tteck/Proxmox) community scripts.
+
+## What is Music Assistant?
+
+Music Assistant is a free, open-source music library manager that can serve as your personal music streaming server. It supports multiple music providers, players, and integrates beautifully with Home Assistant.
+
+## Features
+
+- ✅ Automated LXC container creation
+- ✅ Minimal resource usage (2GB RAM, 2 CPU cores, 4GB disk)
+- ✅ Systemd service auto-configured
+- ✅ Easy update script included
+- ✅ Debian 12 based for stability
+
+## Installation
+
+### Quick Start
+
+Run this command in your Proxmox VE Shell:
+
+```bash
+bash -c "$(wget -qLO - https://raw.githubusercontent.com/yourusername/music-assistant-pve/main/ct/music-assistant.sh)"
+```
+
+### What Gets Installed
+
+- Python 3 with venv
+- Music Assistant (latest version)
+- Systemd service for auto-start
+- ALSA utilities for audio support
+- Pre-configured directories:
+  - `/opt/music-assistant` - Application files
+  - `/opt/music-assistant/data` - Configuration and database
+  - `/mnt/music` - Mount point for your music library
+
+## Post-Installation
+
+### Access Music Assistant
+
+After installation completes, access the web interface at:
+```
+http://YOUR_LXC_IP:8095
+```
+
+### Mount Your Music Library
+
+To access music from your NAS, you need to mount it in the container:
+
+#### Option 1: NFS Mount (Recommended)
+
+```bash
+# Install NFS client in the container
+apt-get install -y nfs-common
+
+# Create mount point if it doesn't exist
+mkdir -p /mnt/music
+
+# Add to /etc/fstab for persistent mount
+echo "YOUR_NAS_IP:/path/to/music /mnt/music nfs defaults,_netdev 0 0" >> /etc/fstab
+
+# Mount it
+mount -a
+```
+
+#### Option 2: SMB/CIFS Mount
+
+```bash
+# Install CIFS utilities
+apt-get install -y cifs-utils
+
+# Create credentials file
+cat > /root/.smbcredentials <<EOF
+username=YOUR_USERNAME
+password=YOUR_PASSWORD
+EOF
+chmod 600 /root/.smbcredentials
+
+# Add to /etc/fstab
+echo "//YOUR_NAS_IP/music /mnt/music cifs credentials=/root/.smbcredentials,iocharset=utf8 0 0" >> /etc/fstab
+
+# Mount it
+mount -a
+```
+
+#### Option 3: Proxmox Bind Mount (Easiest)
+
+From Proxmox host shell:
+
+```bash
+# Add a bind mount to the container
+pct set CTID -mp0 /mnt/nas/music,mp=/mnt/music
+
+# Restart the container
+pct restart CTID
+```
+
+Replace `CTID` with your container ID and adjust paths as needed.
+
+## Updating
+
+To update Music Assistant to the latest version, run from your Proxmox shell:
+
+```bash
+bash -c "$(wget -qLO - https://raw.githubusercontent.com/yourusername/music-assistant-pve/main/ct/music-assistant.sh)" -s --update
+```
+
+Or manually inside the container:
+
+```bash
+systemctl stop music-assistant
+source /opt/music-assistant/bin/activate
+pip install --upgrade music-assistant
+systemctl start music-assistant
+```
+
+## Configuration
+
+### Change Port
+
+Edit the service file:
+```bash
+nano /etc/systemd/system/music-assistant.service
+```
+
+Add `--port YOUR_PORT` to the ExecStart line, then:
+```bash
+systemctl daemon-reload
+systemctl restart music-assistant
+```
+
+### View Logs
+
+```bash
+journalctl -u music-assistant -f
+```
+
+## Troubleshooting
+
+### Container Won't Start
+- Check Proxmox logs: `pct enter CTID` and `journalctl -xe`
+- Verify network configuration in Proxmox
+
+### Music Assistant Won't Start
+- Check service status: `systemctl status music-assistant`
+- View logs: `journalctl -u music-assistant -f`
+- Verify Python environment: `source /opt/music-assistant/bin/activate && pip list`
+
+### Can't Access Music Files
+- Verify mount: `df -h` and check if `/mnt/music` is mounted
+- Check permissions: `ls -la /mnt/music`
+- Test NAS connectivity: `ping YOUR_NAS_IP`
+
+## System Requirements
+
+- Proxmox VE 7.0 or newer
+- 2GB RAM (minimum)
+- 2 CPU cores (minimum)
+- 4GB disk space (scales with database size)
+
+## Integration with Home Assistant
+
+Music Assistant integrates seamlessly with Home Assistant:
+
+1. In Home Assistant, go to Settings → Devices & Services
+2. Click "+ Add Integration"
+3. Search for "Music Assistant"
+4. Enter your Music Assistant URL: `http://YOUR_LXC_IP:8095`
+
+## Credits
+
+- Music Assistant Team - https://music-assistant.io/
+- tteck for the Proxmox VE Helper Scripts inspiration - https://github.com/tteck/Proxmox
+
+## License
+
+MIT License - Feel free to use and modify as needed.
+
+## Support
+
+- Music Assistant Documentation: https://music-assistant.io/
+- Music Assistant Discord: https://discord.gg/kaVm8hGpne
+- Report issues: https://github.com/yourusername/music-assistant-pve/issues
+
+## Disclaimer
+
+This is a community script and is not officially supported by Music Assistant or Proxmox. Use at your own risk. Always backup your data before making system changes.
