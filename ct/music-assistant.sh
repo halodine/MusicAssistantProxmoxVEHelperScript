@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source <(curl -s https://raw.githubusercontent.com/tteck/Proxmox/main/misc/build.func)
+source <(curl -fsSL https://raw.githubusercontent.com/halodine/MusicAssistantProxmoxVEHelperScript/main/misc/build.func)
 # Copyright (c) 2025
 # Author: Your Name
 # License: MIT
